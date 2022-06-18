@@ -31,5 +31,26 @@ In this repository,I will start a project to show how to do mendelian randomizat
 
 ![image](https://user-images.githubusercontent.com/105405121/174447145-bf699c33-c802-4a3a-9011-0289938a41bf.png)
 
-# covid19 GWAS数据的获取
+# 用TwoSampleMR包进行孟德尔随机化
 
+library(TwoSampleMR)//载入R包
+setwd("D:/GWAS文件/35/性激素结合球蛋白")//将工作路径设置为GWAS数据文件所在的目录下
+danbai <- read.table("GCST90019518_buildGRCh37.tsv",header = T)//GCST90019518_buildGRCh37.tsv为血液中物质的GWAS数据(1/35)
+exp_dat <- format_data(danbai,type = "exposure",snp_col = "variant_id",beta_col = "beta",se_col = "standard_error",effect_allele_col = "effect_allele",other_allele_col = "other_allele",pval_col = "p_value")
+danbai_exp_dat <- clump_data(exp_dat,clump_kb = 1000000,clump_r2 = 0.00001)//去除连锁不平衡
+library(data.table)
+covid19 <- fread("COVID19_HGI_C2_ALL_leave_23andme_20210607.txt",header = T)
+covid19_out_dat <- format_data(covid19,type = "outcome",snps = danbai_exp_dat$SNP,header = TRUE,snp_col = "rsid",beta_col = "all_inv_var_meta_beta",se_col = "all_inv_var_meta_sebeta",effect_allele_col = "ALT",other_allele_col = "REF",pval_col = "all_inv_var_meta_p",ncase_col = "all_inv_var_meta_cases",ncontrol_col = "all_inv_var_meta_controls",chr_col = "#CHR",pos_col = "POS")//COVID19 GWAS数据每一列的含义可以在之前的covidhg.org网站上找到对应的说明
+mydata <- harmonise_data(exposure_dat = danbai_exp_dat,outcome_dat = covid19_out_dat,action = 2)//将IV的效应等位基因对齐
+res <- mr(mydata)//孟德尔随机化
+het <- mr_heterogeneity(mydata)//异质性检验
+pleio <- mr_pleiotropy_test(mydata)//水平多样性检验
+single <- mr_leaveoneout(mydata)
+mr_leaveoneout_plot(single)//逐一剔除检验
+p1 <- mr_scatter_plot(res,mydata)//散点图
+res_single <- mr_singlesnp(mydata)
+p2 <- mr_forest_plot(res_single)//森林图
+p3 <- mr_funnel_plot(res_single)//漏斗图
+p1[[1]]//查看散点图
+p2[[1]]//查看森林图
+p3[[1]]//查看漏斗图
